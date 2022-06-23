@@ -1,5 +1,4 @@
 // TerminalUI.js
-debugger;
 
 class TerminalUI {
   constructor(socket) {
@@ -18,11 +17,18 @@ class TerminalUI {
    * Attach event listeners for terminal UI and socket.io client
    */
   startListening() {
-    this.terminal.onData(data => this.sendInput(data));
+    this.terminal.onKey(data => {
+      debugger;
+      if (!isControl(data.domEvent.keyCode)) {
+        this.write(data.key);
+      }
+      this.sendInput(data.domEvent.keyCode);
+    });
 
+    let that = this;
     this.socket.onmessage =  (data) => {
       // When there is data from PTY on server, print that on Terminal.
-      this.write(data);
+      that.write(data);
     };
   }
 
@@ -54,7 +60,7 @@ class TerminalUI {
   attachTo(container) {
     this.terminal.open(container);
     // Default text to display on terminal.
-    this.terminal.write("Lil Terminal <span style='red'>assist</span>");
+    this.terminal.write("Lil Terminal assist");
     this.terminal.write("");
     this.prompt();
   }
@@ -62,4 +68,14 @@ class TerminalUI {
   clear() {
     this.terminal.clear();
   }
+}
+
+
+function isControl(key) {
+  return key === 8 || // backspace
+      key === 13 || // enter
+      key === 37 || // arrow left
+      key === 38 || // arrow up
+      key === 39 || // arrow right
+      key === 40 // arrow down
 }
