@@ -6,7 +6,7 @@ import (
 )
 
 /*
-	mocks chatbot
+	chatbot
 */
 
 type Bot interface {

@@ -2,60 +2,44 @@ package main
 
 import (
 	"fmt"
-	"io"
-	"os/exec"
+	"net/http"
+
+	"github.com/labstack/echo/v4"
 )
 
 var (
 	cb = GetChatBot()
 )
 
-//func main() {
-//	var message string
-//
-//	fmt.Println(cb.StartConversation())
-//
-//	for {
-//		n, err := fmt.Scan(&message)
-//		if n > 0 && err != nil {
-//			fmt.Printf("error getting message, %s", err)
-//			break
-//		}
-//
-//		if message == "c" {
-//			break
-//		}
-//
-//		fmt.Println(cb.ContinueConversation(message))
-//	}
-//	fmt.Println(cb.FinishConversation())
-//}
-
 func main() {
-	cmd := exec.Command("./chatbot")
+	e := echo.New()
+	e.POST("/", say) // curl -X POST http://0.0.0.0:1111/ -d 'message=START'
+	e.Logger.Fatal(e.Start("0.0.0.0:7234"))
+}
 
-	stdout, _ := cmd.StdoutPipe()
-	defer stdout.Close()
+// TODO: make it available from everywhere
+type message struct {
+	Message string `json:"message"`
+}
 
-	stdin, _ := cmd.StdinPipe()
-	defer stdin.Close()
+func say(c echo.Context) error {
+	var response string
+	m := &message{}
 
-	io.WriteString(stdin, "an old falcon")
-
-	if err := cmd.Start(); err != nil {
-		fmt.Println(err)
-		return
+	if err := c.Bind(m); err != nil {
+		return err
 	}
 
-	for {
-		tmp := make([]byte, 1024)
-		_, err := stdout.Read(tmp)
-		fmt.Print(string(tmp))
+	fmt.Printf("message has arrived: %s\n", m.Message)
 
-		io.WriteString(stdin, "an")
-		if err != nil {
-			fmt.Println(err)
-			break
-		}
+	switch m.Message {
+	case "START":
+		response = cb.StartConversation()
+	case "END":
+		response = cb.FinishConversation()
+	default:
+		response = cb.ContinueConversation(m.Message)
 	}
+
+	return c.String(http.StatusOK, response)
 }

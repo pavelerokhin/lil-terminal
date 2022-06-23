@@ -5,21 +5,25 @@ package main
 */
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
-	"github.com/labstack/echo/v4/middleware"
 	"io"
+	"io/ioutil"
+	"net/http"
 	"os"
-	"os/exec"
 	"text/template"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"golang.org/x/net/websocket"
 )
 
 var (
-	stdin  *io.WriteCloser
-	stdout *io.ReadCloser
+	clientMessage = make(chan string)
+	botResponse   = make(chan string)
 
-	message, response string // global state variables, see also in server.go
+	ws *websocket.Conn
 )
 
 type Template struct {
@@ -31,8 +35,6 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 }
 
 func main() {
-	var err error
-
 	t := &Template{
 		templates: template.Must(template.ParseGlob("client/*.html")),
 	}
@@ -46,53 +48,80 @@ func main() {
 	e.Static("/", "./client")
 
 	e.GET("/", index)
-	e.GET("/ws", ws)
+	e.GET("/ws", webSocketHandler)
 
-	stdin, stdout, err = goChatBot()
-	defer (*stdout).Close()
-	defer (*stdin).Close()
+	// keep connection to bot
+	go backEndToBotConn()
+	// keep connection to frontend
+	go backEndToFrontEndConn()
 
-	if err != nil {
-		fmt.Printf("error launching chat bot %s", err)
-		os.Exit(1)
-	}
-
-	// connection to bot
-	go func() {
-		for {
-			if message != "" {
-
-				// input massages to bot
-				io.WriteString(*stdin, message)
-				if err != nil {
-					fmt.Println(err)
-					break
-				}
-
-				// output massages to bot: bot's reaction
-				tmp := make([]byte, 1024)
-				_, err = (*stdout).Read(tmp)
-				response = string(tmp)
-				fmt.Println(response)
-
-				message = ""
-			}
-		}
-	}()
-
-	// start server (NB ws handler)
+	// start server (NB web socket handler)
 	e.Logger.Fatal(e.Start(":1323"))
 }
 
-func goChatBot() (*io.WriteCloser, *io.ReadCloser, error) {
-	cmd := exec.Command("./chatbot/chatbot")
-	in, _ := cmd.StdinPipe()
-	out, _ := cmd.StdoutPipe()
+// TODO: make it available from everywhere
+type message struct {
+	Message string `json:"message"`
+}
 
-	if err := cmd.Start(); err != nil {
-		fmt.Println(err)
-		return nil, nil, err
+func backEndToBotConn() {
+	fmt.Println("start the connection between backend and chat-bot")
+
+	for {
+		m := <-clientMessage
+		fmt.Println("client message:", m)
+
+		msg := message{
+			Message: m,
+		}
+
+		json_data, err := json.Marshal(msg)
+
+		if err != nil {
+			fmt.Printf("error: %s\n", err)
+			break
+		}
+
+		resp, err := http.Post("http://localhost:7234/", "application/json", bytes.NewBuffer(json_data))
+		if err != nil {
+			fmt.Printf("error: %s\n", err)
+			break
+		}
+
+		// output massages from bot: the reaction
+		r, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Printf("error: %s\n", err)
+			break
+		}
+		botResponse <- string(r)
 	}
+	fmt.Println("connection between backend and chat-bot has been interrupted")
+	os.Exit(1)
+}
 
-	return &in, &out, nil
+func backEndToFrontEndConn() {
+	fmt.Println("start the connection between backend and frontend")
+	for {
+		r := <-botResponse
+		fmt.Println("bot response:", r)
+
+		err := websocket.Message.Send(ws, r)
+		if err != nil {
+			fmt.Printf("error: %s\n", err)
+			break
+		}
+	}
+	fmt.Println("connection between backend and frontend has been interrupted")
+	os.Exit(1)
+}
+
+// handlers
+func index(c echo.Context) error {
+	return c.Render(http.StatusOK, "index", "")
+}
+
+func webSocketHandler(c echo.Context) error {
+	websocket.Handler(ChatBotWebSocketHandler).ServeHTTP(c.Response(), c.Request())
+	return nil
 }

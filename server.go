@@ -6,18 +6,19 @@ import (
 	"strconv"
 )
 
-func ChatBotWebSocketHandler(ws *websocket.Conn) {
+func ChatBotWebSocketHandler(w *websocket.Conn) {
+	ws = w
+
 	defer ws.Close()
 
 	var keyStr string
 	var msg string
 
 	for {
-		// Read
+		// Read from client
 		err := websocket.Message.Receive(ws, &keyStr)
 		if err != nil {
 			fmt.Printf("error: %s\n", err)
-			//c.Logger().Error(err)
 			return
 		}
 		key, err := asciiNum(keyStr)
@@ -32,27 +33,18 @@ func ChatBotWebSocketHandler(ws *websocket.Conn) {
 				}
 
 			case 13:
-				fmt.Printf("message: %s\n", msg)
-				message = msg
+				clientMessage <- msg
 				msg = ""
 
 			case 37, 38, 39, 40:
 				fmt.Println("arrow key")
 			}
 		} else {
+			// not a control key
 			msg += string(key)
 		}
 
-		// Write
-		if response != "" {
-			err = websocket.Message.Send(ws, response)
-			if err != nil {
-				fmt.Printf("%s\n", err)
-			}
-
-			response = ""
-		}
-
+		// Write to client: see goroutine in func init
 	}
 }
 
