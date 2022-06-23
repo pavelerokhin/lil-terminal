@@ -10,6 +10,8 @@ func ChatBotWebSocketHandler(ws *websocket.Conn) {
 	defer ws.Close()
 
 	var keyStr string
+	var msg string
+
 	for {
 		// Read
 		err := websocket.Message.Receive(ws, &keyStr)
@@ -28,11 +30,12 @@ func ChatBotWebSocketHandler(ws *websocket.Conn) {
 				} else {
 					msg = ""
 				}
+
 			case 13:
 				fmt.Printf("message: %s\n", msg)
-				// get answer
-
+				message = msg
 				msg = ""
+
 			case 37, 38, 39, 40:
 				fmt.Println("arrow key")
 			}
