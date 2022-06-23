@@ -1,18 +1,10 @@
 // index.js
-debugger;
-
-// IMPORTANT: Make sure you replace this address with your server address.
 
 const serverAddress = "http://localhost:1323/ws";
 
 //Server sandbox available at https://codesandbox.io/s/web-terminal-tutorial-server-g2ihu
 
 function connectToSocket() {
-  // return new Promise(res => {
-  //   const socket = io(serverAddress);
-  //   res(socket);
-  // });
-
   let loc = window.location;
   let uri = "ws:";
 

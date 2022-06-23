@@ -1,4 +1,4 @@
-package chatbot
+package main
 
 import (
 	"fmt"
@@ -13,6 +13,7 @@ type Bot interface {
 	StartConversation() string
 	ContinueConversation() string
 	FinishConversation() string
+	MockCharm() string
 }
 
 type chatBot struct{}
@@ -30,5 +31,9 @@ func (b *chatBot) ContinueConversation(message string) string {
 }
 
 func (b *chatBot) FinishConversation() string {
+	return "See you soon!"
+}
+
+func (b *chatBot) MockCharm() string {
 	return "See you soon!"
 }
