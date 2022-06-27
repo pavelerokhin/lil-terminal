@@ -6,7 +6,7 @@ import (
 )
 
 /*
-	chatbot
+	chatbot_conversational
 */
 
 type Bot interface {
@@ -16,24 +16,24 @@ type Bot interface {
 	MockCharm() string
 }
 
-type chatBot struct{}
+type ChatBot struct{}
 
-func GetChatBot() *chatBot {
-	return &chatBot{}
+func GetChatBot() *ChatBot {
+	return &ChatBot{}
 }
 
-func (b *chatBot) StartConversation() string {
+func (b *ChatBot) StartConversation() string {
 	return "Hello!"
 }
 
-func (b *chatBot) ContinueConversation(message string) string {
+func (b *ChatBot) ContinueConversation(message string) string {
 	return fmt.Sprintf("OK, you mean: %s", strings.ToLower(message))
 }
 
-func (b *chatBot) FinishConversation() string {
+func (b *ChatBot) FinishConversation() string {
 	return "See you soon!"
 }
 
-func (b *chatBot) MockCharm() string {
+func (b *ChatBot) MockCharm() string {
 	return "See you soon!"
 }

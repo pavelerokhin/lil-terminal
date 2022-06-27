@@ -1,4 +1,6 @@
-// TerminalUI.js
+// TerminalUIconversational.js
+
+// TODO: add backspace functionality
 
 class TerminalUI {
   constructor(socket) {
@@ -18,17 +20,20 @@ class TerminalUI {
    */
   startListening() {
     this.terminal.onKey(data => {
-      debugger;
       if (!isControl(data.domEvent.keyCode)) {
         this.write(data.key);
       }
+
       this.sendInput(data.domEvent.keyCode);
     });
 
     let that = this;
     this.socket.onmessage =  (data) => {
       // When there is data from PTY on server, print that on Terminal.
-      that.write(data);
+      debugger;
+      that.promptA()
+      that.write(data.data);
+      that.promptQ()
     };
   }
 
@@ -42,7 +47,11 @@ class TerminalUI {
   /**
    * Utility function to print new line on terminal.
    */
-  prompt() {
+  promptA() {
+    this.terminal.write(`\r\n> `);
+  }
+
+  promptQ() {
     this.terminal.write(`\r\n$ `);
   }
 
@@ -62,7 +71,7 @@ class TerminalUI {
     // Default text to display on terminal.
     this.terminal.write("Lil Terminal assist");
     this.terminal.write("");
-    this.prompt();
+    this.promptQ();
   }
 
   clear() {
