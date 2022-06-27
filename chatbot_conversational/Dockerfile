@@ -1,7 +1,5 @@
 FROM golang:latest
 
-LABEL maintainer = "Pavel Erokhin <pavel.v.erokhin@gmail.com>"
-
 WORKDIR /app
 
 COPY go.mod .

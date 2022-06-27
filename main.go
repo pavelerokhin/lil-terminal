@@ -8,15 +8,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"golang.org/x/net/websocket"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
 	"text/template"
-
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
-	"golang.org/x/net/websocket"
 )
 
 var (
@@ -51,7 +51,8 @@ func main() {
 	e.GET("/ws", webSocketHandler)
 
 	// keep connection to bot
-	go backEndToBotConn()
+	//go backEndToBotConnConversational()
+	go backEndToBotConnStdInOut()
 	// keep connection to frontend
 	go backEndToFrontEndConn()
 
@@ -64,7 +65,7 @@ type message struct {
 	Message string `json:"message"`
 }
 
-func backEndToBotConn() {
+func backEndToBotConnConversational() {
 	fmt.Println("start the connection between backend and chat-bot")
 
 	for {
@@ -98,6 +99,101 @@ func backEndToBotConn() {
 	}
 	fmt.Println("connection between backend and chat-bot has been interrupted")
 	os.Exit(1)
+}
+
+func backEndToBotConnStdInOut() {
+	fmt.Println("start the connection between backend and chat-bot")
+
+	var err error
+	//var stdout, stderr bytes.Buffer
+
+	subProcess := exec.Command("./chatbot_std/chatbot_std") //Just for testing, replace with your subProcess
+	stdin, err := subProcess.StdinPipe()
+	if err != nil {
+		fmt.Printf("error getting stdIn pipe: %s", err)
+		return
+	}
+
+	//subProcess.Stdout = &stdout
+	//subProcess.Stderr = &stderr
+
+	//stdout, err := subProcess.StdoutPipe()
+	//if err != nil {
+	//	fmt.Printf("error getting stdOut pipe: %s", err)
+	//	return
+	//}
+	//
+	//stderr, err := subProcess.StderrPipe()
+	//if err != nil {
+	//	fmt.Printf("error getting stdError pipe: %s", err)
+	//	return
+	//}
+	var stdout, stderr bytes.Buffer
+	subProcess.Stdout = &stdout // standard output
+	subProcess.Stderr = &stderr // standard error
+
+	err = subProcess.Start()
+	if err != nil {
+		fmt.Printf("error starting subprocess: %s", err)
+		return
+	}
+
+	//stdoutScanner := bufio.NewScanner(stdout)
+	//stderrScanner := bufio.NewScanner(stderr)
+	//go func() {
+	//	for stdoutScanner.Scan() {
+	//		text := stdoutScanner.Text()
+	//		println(text)
+	//		botResponse <- text
+	//	}
+	//}()
+	//
+	//go func() {
+	//	for stderrScanner.Scan() {
+	//		text := stderrScanner.Text()
+	//		fmt.Println("error in stdError: ", text)
+	//		os.Exit(1)
+	//	}
+	//}()
+
+	//go func() {
+	//	for {
+	//		if len(stdout.String()) > 0 {
+	//			text := stdout.String()
+	//			println(text)
+	//			botResponse <- text
+	//		}
+	//	}
+	//}()
+
+	for {
+		m := <-clientMessage
+		fmt.Println("client message:", m)
+
+		_, err1 := io.WriteString(stdin, m)
+		if err1 != nil {
+			fmt.Println("error writing to stdIn:", err1)
+			break
+		}
+
+		outStr, errStr := string(stdout.Bytes()), string(stderr.Bytes())
+		fmt.Printf("out:\n%s\nerr:\n%s\n", outStr, errStr)
+
+		botResponse <- outStr
+	}
+
+	fmt.Println("connection between backend and chat-bot has been interrupted")
+	os.Exit(1)
+}
+
+func runProcess(process *exec.Cmd) (stdout, stderr string, err error) {
+	var stdoutbuf, stderrbuf bytes.Buffer
+	process.Stdout = &stdoutbuf
+	process.Stderr = &stderrbuf
+	if err := process.Run(); err != nil {
+		return "", "", err
+	}
+	return stdoutbuf.String(), stderrbuf.String(), nil
 }
 
 func backEndToFrontEndConn() {

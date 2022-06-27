@@ -24,7 +24,7 @@ function startTerminal(container, socket) {
   terminal.attachTo(container);
 
   // When terminal attached to DOM, start listening for input, output events.
-  // Check TerminalUI startListening() function for details.
+  // Check TerminalUIconversational startListening() function for details.
   terminal.startListening();
 }
 
